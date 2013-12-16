@@ -1,0 +1,5 @@
+#include "Resource.h"
+
+IDB_TILE_IMAGE      BITMAP      DISCARDABLE "TileImage.bmp" 
+END
+
