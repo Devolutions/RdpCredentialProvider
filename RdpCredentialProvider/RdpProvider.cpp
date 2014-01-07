@@ -54,6 +54,7 @@ HRESULT RdpProvider::SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, D
 	{
 		case CPUS_LOGON:
 		case CPUS_UNLOCK_WORKSTATION:
+		case CPUS_CREDUI:
 			if (!s_bCredsEnumerated)
 			{
 				_cpus = cpus;
@@ -67,7 +68,6 @@ HRESULT RdpProvider::SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, D
 			}
 			break;
 
-		case CPUS_CREDUI:
 		case CPUS_CHANGE_PASSWORD:
 			hr = E_NOTIMPL;
 			break;
