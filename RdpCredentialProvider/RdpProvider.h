@@ -6,7 +6,7 @@
 #include "RdpCredential.h"
 #include "helpers.h"
 
-#define MAX_CREDENTIALS		3
+#define MAX_CREDENTIALS		1
 #define MAX_DWORD		0xFFFFFFFF
 
 class RdpProvider : public ICredentialProvider
@@ -78,11 +78,11 @@ private:
 	void _CleanupSetSerialization();
 
 private:
-	LONG              _cRef;
+	LONG _cRef;
 	RdpCredential *_rgpCredentials[MAX_CREDENTIALS];
-	DWORD                                   _dwNumCreds;
-	KERB_INTERACTIVE_UNLOCK_LOGON*          _pkiulSetSerialization;
-	DWORD                                   _dwSetSerializationCred;
-	bool                                    _bAutoSubmitSetSerializationCred;
-	CREDENTIAL_PROVIDER_USAGE_SCENARIO      _cpus;
+	DWORD _dwNumCreds;
+	KERB_INTERACTIVE_UNLOCK_LOGON* _pkiulSetSerialization;
+	DWORD _dwSetSerializationCred;
+	bool _bAutoSubmitSetSerializationCred;
+	CREDENTIAL_PROVIDER_USAGE_SCENARIO _cpus;
 };

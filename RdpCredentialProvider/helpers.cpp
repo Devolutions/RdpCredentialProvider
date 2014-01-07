@@ -3,18 +3,11 @@
 #include <intsafe.h>
 #include <wincred.h>
 
-// 
-// Copies the field descriptor pointed to by rcpfd into a buffer allocated 
-// using CoTaskMemAlloc. Returns that buffer in ppcpfd.
-// 
-HRESULT FieldDescriptorCoAllocCopy(const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR& rcpfd,
-				   CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** ppcpfd)
+HRESULT FieldDescriptorCoAllocCopy(const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR& rcpfd, CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** ppcpfd)
 {
 	HRESULT hr;
 	DWORD cbStruct = sizeof(CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR);
-
-	CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR* pcpfd = 
-		(CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR*) CoTaskMemAlloc(cbStruct);
+	CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR* pcpfd = (CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR*) CoTaskMemAlloc(cbStruct);
 
 	if (pcpfd)
 	{
@@ -35,6 +28,7 @@ HRESULT FieldDescriptorCoAllocCopy(const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR& r
 	{
 		hr = E_OUTOFMEMORY;
 	}
+
 	if (SUCCEEDED(hr))
 	{
 		*ppcpfd = pcpfd;
@@ -128,8 +122,7 @@ static void _UnicodeStringPackedUnicodeStringCopy(const UNICODE_STRING& rus, PWS
 	CopyMemory(pus->Buffer, rus.Buffer, pus->Length);
 }
 
-HRESULT KerbInteractiveUnlockLogonInit(PWSTR pwzDomain, PWSTR pwzUsername, PWSTR pwzPassword,
-				       CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, KERB_INTERACTIVE_UNLOCK_LOGON* pkiul)
+HRESULT KerbInteractiveUnlockLogonInit(PWSTR pwzDomain, PWSTR pwzUsername, PWSTR pwzPassword, CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, KERB_INTERACTIVE_UNLOCK_LOGON* pkiul)
 {
 	KERB_INTERACTIVE_UNLOCK_LOGON kiul;
 	ZeroMemory(&kiul, sizeof(kiul));

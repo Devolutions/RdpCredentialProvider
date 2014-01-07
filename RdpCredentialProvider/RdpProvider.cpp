@@ -174,32 +174,9 @@ HRESULT RdpProvider::GetCredentialCount(DWORD* pdwCount, DWORD* pdwDefault, BOOL
 {
 	HRESULT hr = S_OK;
 
-	if (_pkiulSetSerialization && _dwSetSerializationCred == CREDENTIAL_PROVIDER_NO_DEFAULT)
-	{
-		_EnumerateSetSerialization();
-	}
-
-	*pdwCount = _dwNumCreds;
-
-	if (*pdwCount > 0)
-	{
-		if (_dwSetSerializationCred != CREDENTIAL_PROVIDER_NO_DEFAULT)
-		{
-			*pdwDefault = _dwSetSerializationCred;
-		}
-		else
-		{
-			*pdwDefault = CREDENTIAL_PROVIDER_NO_DEFAULT;
-		}
-
-		*pbAutoLogonWithDefault = _bAutoSubmitSetSerializationCred;
-	}
-	else
-	{
-		*pdwDefault = CREDENTIAL_PROVIDER_NO_DEFAULT;
-		*pbAutoLogonWithDefault = FALSE;
-		hr = E_FAIL;
-	}
+	*pdwCount = 1;
+	*pdwDefault = 0;
+	*pbAutoLogonWithDefault = FALSE;
 
 	return hr;
 }
@@ -228,7 +205,7 @@ HRESULT RdpProvider::_EnumerateOneCredential(DWORD dwCredentialIndex, PCWSTR pwz
 
 	if (ppc)
 	{
-		hr = ppc->Initialize(_cpus, s_rgCredProvFieldDescriptors, s_rgFieldStatePairs, pwzUsername);
+		hr = ppc->Initialize(_cpus, s_rgCredProvFieldDescriptors, s_rgFieldStatePairs, pwzUsername, NULL, NULL);
 
 		if (SUCCEEDED(hr))
 		{
@@ -250,12 +227,10 @@ HRESULT RdpProvider::_EnumerateOneCredential(DWORD dwCredentialIndex, PCWSTR pwz
 
 HRESULT RdpProvider::_EnumerateCredentials()
 {
-	HRESULT hr = _EnumerateOneCredential(0, L"Administrator");
-
-	if (SUCCEEDED(hr))
-	{
-		hr = _EnumerateOneCredential(1, L"Guest");
-	}
+	HRESULT hr;
+	
+	hr = _EnumerateOneCredential(0, L"");
+	//hr = _EnumerateOneCredential(0, L"Administrator");
 
 	return hr;
 }

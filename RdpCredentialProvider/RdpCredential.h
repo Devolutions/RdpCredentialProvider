@@ -88,16 +88,19 @@ public:
 		const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR* rgcpfd,
 		const FIELD_STATE_PAIR* rgfsp,
 		PCWSTR pwzUsername,
-		PCWSTR pwzPassword = NULL);
+		PCWSTR pwzPassword = NULL,
+		PCWSTR pwzDomain = NULL);
 
 	RdpCredential();
 	virtual ~RdpCredential();
 
 private:
-	LONG                                  _cRef;
-	CREDENTIAL_PROVIDER_USAGE_SCENARIO    _cpus;
-	CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR  _rgCredProvFieldDescriptors[SFI_NUM_FIELDS];
-	FIELD_STATE_PAIR                      _rgFieldStatePairs[SFI_NUM_FIELDS];
-	PWSTR                                 _rgFieldStrings[SFI_NUM_FIELDS];
-	ICredentialProviderCredentialEvents* _pCredProvCredentialEvents;                  
+	LONG _cRef;
+	CREDENTIAL_PROVIDER_USAGE_SCENARIO _cpus;
+	CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR _rgCredProvFieldDescriptors[SFI_NUM_FIELDS];
+	FIELD_STATE_PAIR _rgFieldStatePairs[SFI_NUM_FIELDS];
+	PWSTR _rgFieldStrings[SFI_NUM_FIELDS];
+	ICredentialProviderCredentialEvents* _pCredProvCredentialEvents;
+
+	PWSTR pwszDomain;
 };

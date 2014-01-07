@@ -46,9 +46,14 @@ RdpCredential::~RdpCredential()
 
 HRESULT RdpCredential::Initialize(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus,
 	const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR* rgcpfd,
-	const FIELD_STATE_PAIR* rgfsp, PCWSTR pwzUsername, PCWSTR pwzPassword)
+	const FIELD_STATE_PAIR* rgfsp, PCWSTR pwzUsername, PCWSTR pwzPassword, PCWSTR pwzDomain)
 {
 	HRESULT hr = S_OK;
+
+#if 0
+	if (!GetSystemMetrics(SM_REMOTESESSION))
+		return E_FAIL; /* disable usage outside of remote desktop environment */
+#endif
 
 	_cpus = cpus;
 
@@ -66,6 +71,11 @@ HRESULT RdpCredential::Initialize(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus,
 	if (SUCCEEDED(hr))
 	{
 		hr = SHStrDupW(pwzPassword ? pwzPassword : L"", &_rgFieldStrings[SFI_PASSWORD]);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		hr = SHStrDupW(pwzDomain ? pwzDomain : L"", &pwszDomain);
 	}
 
 	if (SUCCEEDED(hr))
@@ -116,6 +126,7 @@ HRESULT RdpCredential::SetDeselected()
 	{
 		size_t lenPassword;
 		hr = StringCchLengthW(_rgFieldStrings[SFI_PASSWORD], 128, &(lenPassword));
+
 		if (SUCCEEDED(hr))
 		{
 			SecureZeroMemory(_rgFieldStrings[SFI_PASSWORD], lenPassword * sizeof(*_rgFieldStrings[SFI_PASSWORD]));
@@ -133,8 +144,7 @@ HRESULT RdpCredential::SetDeselected()
 	return hr;
 }
 
-HRESULT RdpCredential::GetFieldState(DWORD dwFieldID, CREDENTIAL_PROVIDER_FIELD_STATE* pcpfs,
-	CREDENTIAL_PROVIDER_FIELD_INTERACTIVE_STATE* pcpfis)
+HRESULT RdpCredential::GetFieldState(DWORD dwFieldID, CREDENTIAL_PROVIDER_FIELD_STATE* pcpfs, CREDENTIAL_PROVIDER_FIELD_INTERACTIVE_STATE* pcpfis)
 {
 	HRESULT hr;
 
@@ -149,6 +159,7 @@ HRESULT RdpCredential::GetFieldState(DWORD dwFieldID, CREDENTIAL_PROVIDER_FIELD_
 	{
 		hr = E_INVALIDARG;
 	}
+
 	return hr;
 }
 
@@ -289,46 +300,51 @@ HRESULT RdpCredential::GetSerialization(CREDENTIAL_PROVIDER_GET_SERIALIZATION_RE
 
 	HRESULT hr;
 
-	WCHAR wsz[MAX_COMPUTERNAME_LENGTH+1];
-	DWORD cch = ARRAYSIZE(wsz);
-	if (GetComputerNameW(wsz, &cch))
+	if (!pwszDomain || (wcslen(pwszDomain) < 1))
 	{
-		PWSTR pwzProtectedPassword;
+		WCHAR wsz[MAX_COMPUTERNAME_LENGTH+1];
+		DWORD cch = ARRAYSIZE(wsz);
 
-		hr = ProtectIfNecessaryAndCopyPassword(_rgFieldStrings[SFI_PASSWORD], _cpus, &pwzProtectedPassword);
+		if (!GetComputerNameW(wsz, &cch))
+		{
+			DWORD dwErr = GetLastError();
+			hr = HRESULT_FROM_WIN32(dwErr);
+			return hr;
+		}
+
+		hr = SHStrDupW(wsz ? wsz : L"", &pwszDomain);
+	}
+
+	PWSTR pwzProtectedPassword;
+
+	hr = ProtectIfNecessaryAndCopyPassword(_rgFieldStrings[SFI_PASSWORD], _cpus, &pwzProtectedPassword);
+
+	if (SUCCEEDED(hr))
+	{
+		KERB_INTERACTIVE_UNLOCK_LOGON kiul;
+
+		hr = KerbInteractiveUnlockLogonInit(pwszDomain, _rgFieldStrings[SFI_USERNAME], pwzProtectedPassword, _cpus, &kiul);
 
 		if (SUCCEEDED(hr))
 		{
-			KERB_INTERACTIVE_UNLOCK_LOGON kiul;
-
-			hr = KerbInteractiveUnlockLogonInit(wsz, _rgFieldStrings[SFI_USERNAME], pwzProtectedPassword, _cpus, &kiul);
+			hr = KerbInteractiveUnlockLogonPack(kiul, &pcpcs->rgbSerialization, &pcpcs->cbSerialization);
 
 			if (SUCCEEDED(hr))
 			{
-				hr = KerbInteractiveUnlockLogonPack(kiul, &pcpcs->rgbSerialization, &pcpcs->cbSerialization);
+				ULONG ulAuthPackage;
+				hr = RetrieveNegotiateAuthPackage(&ulAuthPackage);
 
 				if (SUCCEEDED(hr))
 				{
-					ULONG ulAuthPackage;
-					hr = RetrieveNegotiateAuthPackage(&ulAuthPackage);
+					pcpcs->ulAuthenticationPackage = ulAuthPackage;
+					pcpcs->clsidCredentialProvider = CLSID_RdpProvider;
 
-					if (SUCCEEDED(hr))
-					{
-						pcpcs->ulAuthenticationPackage = ulAuthPackage;
-						pcpcs->clsidCredentialProvider = CLSID_RdpProvider;
-
-						*pcpgsr = CPGSR_RETURN_CREDENTIAL_FINISHED;
-					}
+					*pcpgsr = CPGSR_RETURN_CREDENTIAL_FINISHED;
 				}
 			}
-
-			CoTaskMemFree(pwzProtectedPassword);
 		}
-	}
-	else
-	{
-		DWORD dwErr = GetLastError();
-		hr = HRESULT_FROM_WIN32(dwErr);
+
+		CoTaskMemFree(pwzProtectedPassword);
 	}
 
 	return hr;
@@ -337,7 +353,7 @@ struct REPORT_RESULT_STATUS_INFO
 {
 	NTSTATUS ntsStatus;
 	NTSTATUS ntsSubstatus;
-	PWSTR     pwzMessage;
+	PWSTR pwzMessage;
 	CREDENTIAL_PROVIDER_STATUS_ICON cpsi;
 };
 
