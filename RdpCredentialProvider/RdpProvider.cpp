@@ -2,7 +2,10 @@
 #include <credentialprovider.h>
 #include "RdpProvider.h"
 #include "RdpCredential.h"
+#include "helpers.h"
 #include "guid.h"
+
+CLogFile log;
 
 RdpProvider::RdpProvider():
 	_cRef(1),
@@ -14,6 +17,8 @@ RdpProvider::RdpProvider():
 	DllAddRef();
 
 	ZeroMemory(_rgpCredentials, sizeof(_rgpCredentials));
+
+	log.OpenFile("RdpCredentialProvider.txt", true);
 }
 
 RdpProvider::~RdpProvider()
@@ -25,6 +30,8 @@ RdpProvider::~RdpProvider()
 			_rgpCredentials[i]->Release();
 		}
 	}
+
+	log.CloseFile();
 
 	DllRelease();
 }
@@ -48,7 +55,14 @@ HRESULT RdpProvider::SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, D
 	UNREFERENCED_PARAMETER(dwFlags);
 	HRESULT hr;
 
+	log.Write("RdpProvider::SetUsageScenario: %d dwFlags: 0x%04X", (int) cpus, (int) dwFlags);
+
 	static bool s_bCredsEnumerated = false;
+
+#ifdef RDPCREDPROV_RESTRICTED
+	if (cpus == CPUS_CREDUI)
+		return E_NOTIMPL;
+#endif
 
 	switch (cpus)
 	{
@@ -58,7 +72,6 @@ HRESULT RdpProvider::SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, D
 			if (!s_bCredsEnumerated)
 			{
 				_cpus = cpus;
-
 				hr = this->_EnumerateCredentials();
 				s_bCredsEnumerated = true;
 			}
@@ -84,6 +97,8 @@ STDMETHODIMP RdpProvider::SetSerialization(const CREDENTIAL_PROVIDER_CREDENTIAL_
 {
 	HRESULT hr = E_INVALIDARG;
 
+	log.Write("RdpProvider::SetSerialization");
+
 	if ((CLSID_RdpProvider == pcpcs->clsidCredentialProvider))
 	{
 		ULONG ulAuthPackage;
@@ -91,26 +106,26 @@ STDMETHODIMP RdpProvider::SetSerialization(const CREDENTIAL_PROVIDER_CREDENTIAL_
 
 		if (SUCCEEDED(hr))
 		{
-			if ((ulAuthPackage == pcpcs->ulAuthenticationPackage) &&
-				(0 < pcpcs->cbSerialization && pcpcs->rgbSerialization))
+			if ((ulAuthPackage == pcpcs->ulAuthenticationPackage) && (0 < pcpcs->cbSerialization && pcpcs->rgbSerialization))
 			{
 				KERB_INTERACTIVE_UNLOCK_LOGON* pkil = (KERB_INTERACTIVE_UNLOCK_LOGON*) pcpcs->rgbSerialization;
+
 				if (KerbInteractiveLogon == pkil->Logon.MessageType)
 				{
 					BYTE* rgbSerialization;
-					rgbSerialization = (BYTE*)HeapAlloc(GetProcessHeap(), 0, pcpcs->cbSerialization);
+					rgbSerialization = (BYTE*) HeapAlloc(GetProcessHeap(), 0, pcpcs->cbSerialization);
 					hr = rgbSerialization ? S_OK : E_OUTOFMEMORY;
 
 					if (SUCCEEDED(hr))
 					{
 						CopyMemory(rgbSerialization, pcpcs->rgbSerialization, pcpcs->cbSerialization);
-						KerbInteractiveUnlockLogonUnpackInPlace((KERB_INTERACTIVE_UNLOCK_LOGON*)rgbSerialization);
+						KerbInteractiveUnlockLogonUnpackInPlace((KERB_INTERACTIVE_UNLOCK_LOGON*) rgbSerialization);
 
 						if (_pkiulSetSerialization)
 						{
 							HeapFree(GetProcessHeap(), 0, _pkiulSetSerialization);
 
-							if (_dwSetSerializationCred != CREDENTIAL_PROVIDER_NO_DEFAULT && _dwSetSerializationCred == _dwNumCreds - 1)
+							if ((_dwSetSerializationCred != CREDENTIAL_PROVIDER_NO_DEFAULT) && (_dwSetSerializationCred == _dwNumCreds - 1))
 							{
 								_rgpCredentials[_dwSetSerializationCred]->Release();
 								_rgpCredentials[_dwSetSerializationCred] = NULL;
@@ -131,6 +146,7 @@ STDMETHODIMP RdpProvider::SetSerialization(const CREDENTIAL_PROVIDER_CREDENTIAL_
 			hr = E_INVALIDARG;
 		}
 	}
+
 	return hr;
 }
 
@@ -139,11 +155,15 @@ HRESULT RdpProvider::Advise(ICredentialProviderEvents* pcpe, UINT_PTR upAdviseCo
 	UNREFERENCED_PARAMETER(pcpe);
 	UNREFERENCED_PARAMETER(upAdviseContext);
 
+	log.Write("RdpProvider::Advise");
+
 	return E_NOTIMPL;
 }
 
 HRESULT RdpProvider::UnAdvise()
 {
+	log.Write("RdpProvider::UnAdvise");
+
 	return E_NOTIMPL;
 }
 
@@ -151,12 +171,16 @@ HRESULT RdpProvider::GetFieldDescriptorCount(DWORD* pdwCount)
 {
 	*pdwCount = SFI_NUM_FIELDS;
 
+	log.Write("RdpProvider::GetFieldDescriptorCount");
+
 	return S_OK;
 }
 
 HRESULT RdpProvider::GetFieldDescriptorAt(DWORD dwIndex, CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** ppcpfd)
 {    
 	HRESULT hr;
+
+	log.Write("RdpProvider::GetFieldDescriptorAt: dwIndex: %d", (int) dwIndex);
 
 	if ((dwIndex < SFI_NUM_FIELDS) && ppcpfd)
 	{
@@ -174,9 +198,13 @@ HRESULT RdpProvider::GetCredentialCount(DWORD* pdwCount, DWORD* pdwDefault, BOOL
 {
 	HRESULT hr = S_OK;
 
+	log.Write("RdpProvider::GetCredentialCount");
+
 	*pdwCount = 1;
 	*pdwDefault = 0;
+	
 	*pbAutoLogonWithDefault = FALSE;
+	//*pbAutoLogonWithDefault = TRUE;
 
 	return hr;
 }
@@ -184,6 +212,8 @@ HRESULT RdpProvider::GetCredentialCount(DWORD* pdwCount, DWORD* pdwDefault, BOOL
 HRESULT RdpProvider::GetCredentialAt(DWORD dwIndex, ICredentialProviderCredential** ppcpc)
 {
 	HRESULT hr;
+
+	log.Write("RdpProvider::GetCredentialAt: dwIndex: %d", (int) dwIndex);
 
 	if ((dwIndex < _dwNumCreds) && ppcpc)
 	{
@@ -197,15 +227,18 @@ HRESULT RdpProvider::GetCredentialAt(DWORD dwIndex, ICredentialProviderCredentia
 	return hr;
 }
 
-HRESULT RdpProvider::_EnumerateOneCredential(DWORD dwCredentialIndex, PCWSTR pwzUsername)
+HRESULT RdpProvider::_EnumerateCredentials()
 {
 	HRESULT hr;
+	DWORD dwCredentialIndex = 0;
+
+	log.Write("RdpProvider::_EnumerateCredentials");
 
 	RdpCredential* ppc = new RdpCredential();
 
 	if (ppc)
 	{
-		hr = ppc->Initialize(_cpus, s_rgCredProvFieldDescriptors, s_rgFieldStatePairs, pwzUsername, NULL, NULL);
+		hr = ppc->Initialize(_cpus, s_rgCredProvFieldDescriptors, s_rgFieldStatePairs, L"", NULL, NULL);
 
 		if (SUCCEEDED(hr))
 		{
@@ -221,16 +254,6 @@ HRESULT RdpProvider::_EnumerateOneCredential(DWORD dwCredentialIndex, PCWSTR pwz
 	{
 		hr = E_OUTOFMEMORY;
 	}
-
-	return hr;
-}
-
-HRESULT RdpProvider::_EnumerateCredentials()
-{
-	HRESULT hr;
-	
-	hr = _EnumerateOneCredential(0, L"");
-	//hr = _EnumerateOneCredential(0, L"Administrator");
 
 	return hr;
 }
@@ -258,10 +281,12 @@ HRESULT RdpProvider::_EnumerateSetSerialization()
 {
 	KERB_INTERACTIVE_LOGON* pkil = &_pkiulSetSerialization->Logon;
 
+	log.Write("RdpProvider::_EnumerateSetSerialization");
+
 	_bAutoSubmitSetSerializationCred = false;
 
-	WCHAR wszUsername[MAX_PATH] = {0};
-	WCHAR wszPassword[MAX_PATH] = {0};
+	WCHAR wszUsername[MAX_PATH] = { 0 };
+	WCHAR wszPassword[MAX_PATH] = { 0 };
 
 	HRESULT hr = StringCbCopyNW(wszUsername, sizeof(wszUsername), pkil->UserName.Buffer, pkil->UserName.Length);
 

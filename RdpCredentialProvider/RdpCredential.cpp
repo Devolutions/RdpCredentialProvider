@@ -7,6 +7,8 @@
 #include "RdpCredential.h"
 #include "guid.h"
 
+extern CLogFile log;
+
 RdpCredential::RdpCredential():
 	_cRef(1),
 	_pCredProvCredentialEvents(NULL)
@@ -50,7 +52,9 @@ HRESULT RdpCredential::Initialize(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus,
 {
 	HRESULT hr = S_OK;
 
-#if 0
+	log.Write("RdpCredential::Initialize");
+
+#ifdef RDPCREDPROV_RESTRICTED
 	if (!GetSystemMetrics(SM_REMOTESESSION))
 		return E_FAIL; /* disable usage outside of remote desktop environment */
 #endif
@@ -88,7 +92,9 @@ HRESULT RdpCredential::Initialize(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus,
 
 HRESULT RdpCredential::Advise(ICredentialProviderCredentialEvents* pcpce)
 {
-	if (_pCredProvCredentialEvents != NULL)
+	log.Write("RdpCredential::Advise");
+
+	if (_pCredProvCredentialEvents)
 	{
 		_pCredProvCredentialEvents->Release();
 	}
@@ -101,6 +107,8 @@ HRESULT RdpCredential::Advise(ICredentialProviderCredentialEvents* pcpce)
 
 HRESULT RdpCredential::UnAdvise()
 {
+	log.Write("RdpCredential::UnAdvise");
+
 	if (_pCredProvCredentialEvents)
 	{
 		_pCredProvCredentialEvents->Release();
@@ -113,7 +121,9 @@ HRESULT RdpCredential::UnAdvise()
 
 HRESULT RdpCredential::SetSelected(BOOL* pbAutoLogon)  
 {
-	*pbAutoLogon = FALSE;  
+	log.Write("RdpCredential::SetSelected");
+
+	*pbAutoLogon = FALSE;
 
 	return S_OK;
 }
@@ -122,6 +132,8 @@ HRESULT RdpCredential::SetDeselected()
 {
 	HRESULT hr = S_OK;
 	
+	log.Write("RdpCredential::SetDeselected");
+
 	if (_rgFieldStrings[SFI_PASSWORD])
 	{
 		size_t lenPassword;
@@ -148,6 +160,8 @@ HRESULT RdpCredential::GetFieldState(DWORD dwFieldID, CREDENTIAL_PROVIDER_FIELD_
 {
 	HRESULT hr;
 
+	log.Write("RdpCredential::GetFieldState");
+
 	if ((dwFieldID < ARRAYSIZE(_rgFieldStatePairs)) && pcpfs && pcpfis)
 	{
 		*pcpfs = _rgFieldStatePairs[dwFieldID].cpfs;
@@ -167,6 +181,8 @@ HRESULT RdpCredential::GetStringValue(DWORD dwFieldID, PWSTR* ppwsz)
 {
 	HRESULT hr;
 
+	log.Write("RdpCredential::GetStringValue");
+
 	if (dwFieldID < ARRAYSIZE(_rgCredProvFieldDescriptors) && ppwsz) 
 	{
 		hr = SHStrDupW(_rgFieldStrings[dwFieldID], ppwsz);
@@ -182,6 +198,8 @@ HRESULT RdpCredential::GetStringValue(DWORD dwFieldID, PWSTR* ppwsz)
 HRESULT RdpCredential::GetBitmapValue(DWORD dwFieldID, HBITMAP* phbmp)
 {
 	HRESULT hr;
+
+	log.Write("RdpCredential::GetBitmapValue");
 
 	if ((SFI_TILEIMAGE == dwFieldID) && phbmp)
 	{
@@ -209,6 +227,8 @@ HRESULT RdpCredential::GetSubmitButtonValue(DWORD dwFieldID, DWORD* pdwAdjacentT
 {
 	HRESULT hr;
 
+	log.Write("RdpCredential::GetSubmitButtonValue");
+
 	if ((SFI_SUBMIT_BUTTON == dwFieldID) && pdwAdjacentTo)
 	{
 		*pdwAdjacentTo = SFI_PASSWORD;
@@ -225,6 +245,15 @@ HRESULT RdpCredential::GetSubmitButtonValue(DWORD dwFieldID, DWORD* pdwAdjacentT
 HRESULT RdpCredential::SetStringValue(DWORD dwFieldID, PCWSTR pwz)
 {
 	HRESULT hr;
+	PSTR pz = NULL;
+
+	if (pwz)
+		ConvertFromUnicode(CP_UTF8, 0, pwz, -1, &pz, 0, NULL, NULL);
+
+	log.Write("RdpCredential::SetStringValue: dwFieldID: %d pwz: %s", (int) dwFieldID, pz ? pz : "");
+
+	if (pz)
+		free(pz);
 
 	if (dwFieldID < ARRAYSIZE(_rgCredProvFieldDescriptors) && 
 		(CPFT_EDIT_TEXT == _rgCredProvFieldDescriptors[dwFieldID].cpft || 
@@ -248,6 +277,8 @@ HRESULT RdpCredential::GetCheckboxValue(DWORD dwFieldID, BOOL* pbChecked, PWSTR*
 	UNREFERENCED_PARAMETER(pbChecked);
 	UNREFERENCED_PARAMETER(ppwszLabel);
 
+	log.Write("RdpCredential::GetCheckboxValue");
+
 	return E_NOTIMPL;
 }
 
@@ -256,6 +287,8 @@ HRESULT RdpCredential::GetComboBoxValueCount(DWORD dwFieldID, DWORD* pcItems, DW
 	UNREFERENCED_PARAMETER(dwFieldID);
 	UNREFERENCED_PARAMETER(pcItems);
 	UNREFERENCED_PARAMETER(pdwSelectedItem);
+
+	log.Write("RdpCredential::GetComboBoxValueCount");
 
 	return E_NOTIMPL;
 }
@@ -266,6 +299,8 @@ HRESULT RdpCredential::GetComboBoxValueAt(DWORD dwFieldID, DWORD dwItem, PWSTR* 
 	UNREFERENCED_PARAMETER(dwItem);
 	UNREFERENCED_PARAMETER(ppwszItem);
 
+	log.Write("RdpCredential::GetComboBoxValueAt");
+
 	return E_NOTIMPL;
 }
 
@@ -273,6 +308,8 @@ HRESULT RdpCredential::SetCheckboxValue(DWORD dwFieldID, BOOL bChecked)
 {
 	UNREFERENCED_PARAMETER(dwFieldID);
 	UNREFERENCED_PARAMETER(bChecked);
+
+	log.Write("RdpCredential::SetCheckboxValue");
 
 	return E_NOTIMPL;
 }
@@ -282,12 +319,17 @@ HRESULT RdpCredential::SetComboBoxSelectedValue(DWORD dwFieldId, DWORD dwSelecte
 	UNREFERENCED_PARAMETER(dwFieldId);
 	UNREFERENCED_PARAMETER(dwSelectedItem);
 
+	log.Write("RdpCredential::SetComboBoxSelectedValue");
+
 	return E_NOTIMPL;
 }
 
 HRESULT RdpCredential::CommandLinkClicked(DWORD dwFieldID)
 {
 	UNREFERENCED_PARAMETER(dwFieldID);
+
+	log.Write("RdpCredential::CommandLinkClicked");
+
 	return E_NOTIMPL;
 }
 
@@ -295,14 +337,16 @@ HRESULT RdpCredential::GetSerialization(CREDENTIAL_PROVIDER_GET_SERIALIZATION_RE
 	CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs, PWSTR* ppwszOptionalStatusText,
 	CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon)
 {
+	HRESULT hr;
+
 	UNREFERENCED_PARAMETER(ppwszOptionalStatusText);
 	UNREFERENCED_PARAMETER(pcpsiOptionalStatusIcon);
 
-	HRESULT hr;
+	log.Write("RdpCredential::GetSerialization");
 
 	if (!pwszDomain || (wcslen(pwszDomain) < 1))
 	{
-		WCHAR wsz[MAX_COMPUTERNAME_LENGTH+1];
+		WCHAR wsz[MAX_COMPUTERNAME_LENGTH + 1];
 		DWORD cch = ARRAYSIZE(wsz);
 
 		if (!GetComputerNameW(wsz, &cch))
@@ -370,6 +414,8 @@ HRESULT RdpCredential::ReportResult(NTSTATUS ntsStatus, NTSTATUS ntsSubstatus,
 	*pcpsiOptionalStatusIcon = CPSI_NONE;
 
 	DWORD dwStatusInfo = (DWORD)-1;
+
+	log.Write("RdpCredential::ReportResult");
 
 	for (DWORD i = 0; i < ARRAYSIZE(s_rgLogonStatusInfo); i++)
 	{

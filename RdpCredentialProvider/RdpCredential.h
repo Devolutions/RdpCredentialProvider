@@ -2,6 +2,7 @@
 #pragma once
 
 #include <windows.h>
+#include <tchar.h>
 #include <strsafe.h>
 #include <shlguid.h>
 #include "helpers.h"
@@ -32,8 +33,7 @@ public:
 		HRESULT hr;
 		if (ppv != NULL)
 		{
-			if (IID_IUnknown == riid ||
-				IID_ICredentialProviderCredential == riid)
+			if (IID_IUnknown == riid || IID_ICredentialProviderCredential == riid)
 			{
 				*ppv = static_cast<IUnknown*>(this);
 				reinterpret_cast<IUnknown*>(*ppv)->AddRef();

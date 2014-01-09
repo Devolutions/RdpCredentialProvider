@@ -1,6 +1,7 @@
 
 #include <credentialprovider.h>
 #include <windows.h>
+#include <tchar.h>
 #include <strsafe.h>
 
 #include "RdpCredential.h"
@@ -31,8 +32,7 @@ public:
 	STDMETHOD (QueryInterface)(REFIID riid, void** ppv)
 	{
 		HRESULT hr;
-		if (IID_IUnknown == riid || 
-			IID_ICredentialProvider == riid)
+		if (IID_IUnknown == riid || IID_ICredentialProvider == riid)
 		{
 			*ppv = this;
 			reinterpret_cast<IUnknown*>(*ppv)->AddRef();
@@ -56,11 +56,8 @@ public:
 	IFACEMETHODIMP GetFieldDescriptorCount(__out DWORD* pdwCount);
 	IFACEMETHODIMP GetFieldDescriptorAt(DWORD dwIndex,  __deref_out CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** ppcpfd);
 
-	IFACEMETHODIMP GetCredentialCount(__out DWORD* pdwCount,
-		__out DWORD* pdwDefault,
-		__out BOOL* pbAutoLogonWithDefault);
-	IFACEMETHODIMP GetCredentialAt(DWORD dwIndex, 
-		__out ICredentialProviderCredential** ppcpc);
+	IFACEMETHODIMP GetCredentialCount(__out DWORD* pdwCount, __out DWORD* pdwDefault, __out BOOL* pbAutoLogonWithDefault);
+	IFACEMETHODIMP GetCredentialAt(DWORD dwIndex, __out ICredentialProviderCredential** ppcpc);
 
 	friend HRESULT RdpProvider_CreateInstance(REFIID riid, __deref_out void** ppv);
 
@@ -70,9 +67,7 @@ protected:
 
 private:
 
-	HRESULT _EnumerateOneCredential(__in DWORD dwCredientialIndex, __in PCWSTR pwzUsername);
 	HRESULT _EnumerateSetSerialization();
-
 	HRESULT _EnumerateCredentials();
 	void _ReleaseEnumeratedCredentials();
 	void _CleanupSetSerialization();
