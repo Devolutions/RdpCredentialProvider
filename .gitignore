@@ -2,11 +2,15 @@
 Debug/
 Release/
 
+build*/
+
 Win32/
 x64/
 
 *.sdf
 *.suo
+*.sln
 *.opensdf
+*.vcxproj
 *.vcxproj.user
 *.vcxproj.filters
