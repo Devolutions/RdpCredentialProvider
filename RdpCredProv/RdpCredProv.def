@@ -1,0 +1,5 @@
+LIBRARY RDPCREDPROV.DLL
+
+EXPORTS
+    DllCanUnloadNow                                 PRIVATE
+    DllGetClassObject                               PRIVATE
