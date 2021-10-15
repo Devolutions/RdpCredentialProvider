@@ -1,9 +1,11 @@
 
 #include <tchar.h>
+#include <stdio.h>
+#include <string.h>
 #include <windows.h>
 #include <wincred.h>
 
-int _tmain(int argc, _TCHAR* argv[])
+int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
 	DWORD status;
 	BOOL fSave = FALSE;

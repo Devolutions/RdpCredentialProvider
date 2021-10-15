@@ -7,7 +7,7 @@
 #include <shlguid.h>
 #include "helpers.h"
 #include "dll.h"
-#include "resource.h"
+#include "resources.h"
 
 class RdpCredential : public ICredentialProviderCredential
 {
